@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>H-500 Analyzer - iOS ARKit</title>
+    <title>H-500 Analyzer - iOS</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
         body, html { 
@@ -29,9 +29,8 @@
             display: flex;
             justify-content: center;
             gap: 15px;
-            z-index: 10;
+            z-index: 20;
             padding: 10px;
-            flex-wrap: wrap;
         }
         
         button {
@@ -40,12 +39,11 @@
             border-radius: 50px;
             font-size: 16px;
             font-weight: bold;
-            background: rgba(0,230,118,0.95);
+            background: #00e676;
             color: black;
-            backdrop-filter: blur(10px);
             cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             transition: transform 0.2s;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         
         button:active { 
@@ -59,56 +57,46 @@
             transform: translateX(-50%);
             background: rgba(0,0,0,0.85);
             color: white;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 30px;
             font-size: 14px;
             text-align: center;
-            backdrop-filter: blur(10px);
-            z-index: 10;
+            z-index: 20;
             pointer-events: none;
-            font-weight: 500;
             white-space: nowrap;
         }
         
-        .sound-control {
+        .sound-btn {
             position: absolute;
             top: 20px;
             right: 20px;
             background: rgba(0,0,0,0.6);
             border-radius: 50px;
             padding: 8px 12px;
-            z-index: 10;
+            z-index: 20;
             cursor: pointer;
             font-size: 20px;
-            backdrop-filter: blur(5px);
+            color: white;
+            border: none;
+            width: auto;
+            box-shadow: none;
         }
         
         @media (max-width: 768px) {
-            button { padding: 12px 20px; font-size: 14px; }
-            .status { font-size: 11px; white-space: normal; max-width: 90%; top: 10px; }
-            .sound-control { top: 10px; right: 10px; font-size: 16px; padding: 6px 10px; }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-        
-        .detecting {
-            animation: pulse 1.5s infinite;
+            button { padding: 10px 20px; font-size: 14px; }
+            .status { font-size: 11px; white-space: normal; max-width: 85%; top: 10px; }
+            .sound-btn { top: 10px; right: 10px; font-size: 16px; padding: 6px 10px; }
         }
     </style>
 </head>
 <body>
     <div class="status" id="status">
-        🍎 iOS ARKit | กำลังโหลด...
+        🍎 iOS | กำลังโหลด...
     </div>
-    <div class="sound-control" id="soundControl" onclick="toggleSound()">
-        🔊
-    </div>
+    <button class="sound-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
     <div class="controls">
-        <button id="ar-btn">📍 เริ่มโหมด AR</button>
-        <button id="reset-btn">🔄 รีเซ็ตมุมมอง</button>
+        <button id="arBtn">📍 เปิด AR</button>
+        <button id="resetBtn">🔄 รีเซ็ต</button>
     </div>
 
     <model-viewer 
@@ -116,218 +104,127 @@
         src="../model.glb"
         ios-src="../model.usdz"
         ar
-        ar-modes="scene-viewer quick-look webxr"
+        ar-modes="quick-look"
         ar-scale="auto"
-        ar-placement="floor"
-        ar-status="true"
         camera-controls
-        tone-mapping="neutral"
-        shadow-intensity="1"
-        exposure="1.5"
-        environment-intensity="1.5"
         auto-rotate
-        rotation-per-second="5deg"
+        rotation-per-second="10deg"
         style="width: 100%; height: 100%;">
     </model-viewer>
 
     <script>
         const viewer = document.getElementById('viewer');
         const statusDiv = document.getElementById('status');
-        const arBtn = document.getElementById('ar-btn');
-        const resetBtn = document.getElementById('reset-btn');
-        const soundControl = document.getElementById('soundControl');
+        const arBtn = document.getElementById('arBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const soundBtn = document.getElementById('soundBtn');
         
-        let isARMode = false;
         let isSoundMuted = false;
         let audio = null;
-        let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         
-        // ปรับแต่งสำหรับ iOS
-        if (isIOS) {
-            viewer.exposure = '1.8';
-            viewer.environmentIntensity = '1.8';
-        }
-        
-        // สร้าง audio element
         function initAudio() {
-            audio = new Audio('../sound.mp3');
+            audio = new Audio();
+            audio.src = '../sound.mp3';
             audio.preload = 'auto';
-            audio.loop = false;
             audio.volume = 0.8;
             
-            // โหลดเสียง
-            audio.load();
+            audio.oncanplaythrough = () => {
+                console.log('Audio ready on iOS');
+            };
             
-            audio.addEventListener('canplaythrough', () => {
-                console.log('Audio loaded successfully');
-            });
-            
-            audio.addEventListener('error', (e) => {
-                console.error('Audio loading error:', e);
-                statusDiv.innerHTML = '⚠️ ไม่พบไฟล์เสียง sound.mp3';
-            });
+            audio.onerror = () => {
+                console.log('Audio file not found');
+            };
         }
         
-        // เล่นเสียง
         function playSound() {
-            if (audio && !isSoundMuted) {
-                audio.currentTime = 0;
-                audio.play().catch(e => {
-                    console.log('Audio play failed:', e);
-                    statusDiv.innerHTML = '🍎 กดที่หน้าเว็บก่อนเพื่อเปิดเสียง';
-                });
+            if (!isSoundMuted && audio) {
+                try {
+                    audio.currentTime = 0;
+                    const playPromise = audio.play();
+                    if (playPromise) {
+                        playPromise.catch(e => {
+                            console.log('iOS auto-play blocked:', e);
+                            statusDiv.textContent = '🍎 แตะที่หน้าจอเพื่อเปิดเสียง';
+                        });
+                    }
+                } catch(e) {
+                    console.log('Sound error:', e);
+                }
             }
         }
         
-        // สลับเสียง
         function toggleSound() {
             isSoundMuted = !isSoundMuted;
-            if (isSoundMuted) {
-                soundControl.innerHTML = '🔇';
-                if (audio) audio.pause();
-                statusDiv.innerHTML = '🔇 ปิดเสียงแล้ว';
-            } else {
-                soundControl.innerHTML = '🔊';
+            soundBtn.textContent = isSoundMuted ? '🔇' : '🔊';
+            if (!isSoundMuted) {
                 playSound();
-                statusDiv.innerHTML = '🔊 เปิดเสียงแล้ว';
+                statusDiv.textContent = '🔊 เปิดเสียงแล้ว';
+                setTimeout(() => updateStatus(), 1500);
+            } else {
+                statusDiv.textContent = '🔇 ปิดเสียงแล้ว';
+                setTimeout(() => updateStatus(), 1500);
             }
-            
-            setTimeout(() => {
-                if (!isARMode) {
-                    statusDiv.innerHTML = '🍎 iOS ARKit | พร้อมใช้งาน';
-                }
-            }, 2000);
         }
         
-        // เริ่ม AR Mode
+        function updateStatus() {
+            statusDiv.textContent = '🍎 กดปุ่ม "เปิด AR" เพื่อเริ่ม';
+        }
+        
         function startAR() {
-            try {
-                if (viewer.canActivateAR) {
-                    // เล่นเสียงเมื่อกดเริ่ม AR
-                    playSound();
-                    
-                    statusDiv.innerHTML = '🔍 กำลังเปิด AR... ขยับกล้องช้าๆ';
-                    statusDiv.classList.add('detecting');
-                    
+            playSound();
+            
+            if (viewer && viewer.activateAR) {
+                try {
                     viewer.activateAR();
-                    
+                    statusDiv.textContent = '🎯 แตะที่พื้นเพื่อวางวัตถุ';
                     setTimeout(() => {
-                        if (!isARMode) {
-                            statusDiv.innerHTML = '⏳ กำลังเรียกใช้ AR... รอสักครู่';
-                            statusDiv.classList.remove('detecting');
-                        }
+                        statusDiv.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
                     }, 3000);
-                    
-                } else {
-                    statusDiv.innerHTML = '⚠️ อุปกรณ์นี้ไม่รองรับ AR';
-                    statusDiv.classList.remove('detecting');
+                } catch(e) {
+                    console.log('AR error:', e);
+                    statusDiv.textContent = '⚠️ เปิด AR ไม่สำเร็จ';
                 }
-            } catch (error) {
-                console.error('Error starting AR:', error);
-                statusDiv.innerHTML = '❌ เกิดข้อผิดพลาด: ' + error.message;
-                statusDiv.classList.remove('detecting');
+            } else {
+                statusDiv.textContent = '⚠️ อุปกรณ์ไม่รองรับ AR';
             }
         }
         
-        // รีเซ็ตกล้อง
         function resetCamera() {
             viewer.cameraOrbit = '0deg 75deg auto';
             viewer.cameraTarget = 'auto auto auto';
-            
-            statusDiv.innerHTML = '🔄 รีเซ็ตตำแหน่งกล้องเรียบร้อย';
-            setTimeout(() => {
-                if (!isARMode) {
-                    statusDiv.innerHTML = '🍎 พร้อมใช้งาน | กด "เริ่มโหมด AR"';
-                }
-            }, 2000);
+            statusDiv.textContent = '🔄 รีเซ็ตเรียบร้อย';
+            setTimeout(() => updateStatus(), 2000);
         }
         
-        // ตรวจจับสถานะ AR
-        viewer.addEventListener('ar-status', (event) => {
-            console.log('AR Status:', event.detail.status);
-            
-            switch(event.detail.status) {
-                case 'session-started':
-                    isARMode = true;
-                    statusDiv.innerHTML = '✅ AR เริ่มทำงาน! แตะที่พื้นเพื่อวางวัตถุ';
-                    statusDiv.classList.remove('detecting');
-                    
-                    // เล่นเสียงอีกครั้งเมื่อ AR เริ่มทำงาน
-                    setTimeout(() => {
-                        playSound();
-                    }, 500);
-                    
-                    setTimeout(() => {
-                        statusDiv.innerHTML = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย | ใช้นิ้ว 2 นิ้วปรับขนาด';
-                    }, 3000);
-                    break;
-                    
-                case 'tracking':
-                    statusDiv.innerHTML = '🎯 กำลังตรวจจับพื้น... ขยับกล้องช้าๆ';
-                    break;
-                    
-                case 'session-ended':
-                    isARMode = false;
-                    statusDiv.innerHTML = '🔄 ออกจากโหมด AR | กดปุ่มเพื่อเริ่มใหม่';
-                    statusDiv.classList.remove('detecting');
-                    break;
-                    
-                case 'failed':
-                    isARMode = false;
-                    statusDiv.classList.remove('detecting');
-                    if (isIOS) {
-                        statusDiv.innerHTML = '⚠️ iOS: ขยับกล้องช้าๆ หันไปที่พื้นที่มีแสงและลวดลาย';
-                    } else {
-                        statusDiv.innerHTML = '⚠️ ไม่พบพื้น ลองขยับกล้องช้าๆ';
-                    }
-                    break;
-            }
-        });
-        
-        // โหลดโมเดลเสร็จ
         viewer.addEventListener('load', () => {
-            console.log('Model loaded successfully');
-            statusDiv.innerHTML = '✅ โหลดโมเดลสำเร็จ | พร้อมใช้งาน';
-            
-            // เริ่มเล่นเสียงอัตโนมัติเมื่อโหลดหน้าเสร็จ
-            setTimeout(() => {
-                playSound();
-            }, 1000);
-            
-            setTimeout(() => {
-                if (!isARMode) {
-                    statusDiv.innerHTML = '🍎 กดปุ่ม "เริ่มโหมด AR" เพื่อเริ่มระบบ';
-                }
-            }, 3000);
+            console.log('Model loaded on iOS');
+            statusDiv.textContent = '✅ พร้อมใช้งาน | กด "เปิด AR"';
         });
         
-        // ตรวจจับการโต้ตอบกับหน้าจอ (สำหรับ auto-play บน iOS)
-        function enableAudioOnInteraction() {
-            if (audio && audio.paused) {
+        viewer.addEventListener('ar-status', (e) => {
+            console.log('AR Status:', e.detail.status);
+            if (e.detail.status === 'session-started') {
                 playSound();
+                statusDiv.textContent = '✅ AR เริ่มทำงาน!';
             }
-            document.removeEventListener('click', enableAudioOnInteraction);
-            document.removeEventListener('touchstart', enableAudioOnInteraction);
+        });
+        
+        // สำหรับ iOS ต้องมี user interaction ก่อนเล่นเสียง
+        function firstInteraction() {
+            playSound();
+            document.removeEventListener('touchstart', firstInteraction);
+            document.removeEventListener('click', firstInteraction);
         }
         
-        document.addEventListener('click', enableAudioOnInteraction);
-        document.addEventListener('touchstart', enableAudioOnInteraction);
+        document.addEventListener('touchstart', firstInteraction);
+        document.addEventListener('click', firstInteraction);
         
-        // ปุ่มเปิด AR
-        arBtn.onclick = (e) => {
-            e.preventDefault();
-            startAR();
-        };
+        arBtn.onclick = startAR;
+        resetBtn.onclick = resetCamera;
         
-        // ปุ่มรีเซ็ต
-        resetBtn.onclick = (e) => {
-            e.preventDefault();
-            resetCamera();
-        };
-        
-        // เริ่มต้น
         initAudio();
+        updateStatus();
     </script>
 </body>
 </html>
