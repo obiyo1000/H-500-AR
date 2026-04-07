@@ -95,7 +95,7 @@
     </div>
     <button class="sound-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
     <div class="controls">
-        <button id="arBtn">📍 เปิด AR</button>
+        <button id="arBtn" disabled>📍 เปิด AR (รอโหลด...)</button>
         <button id="resetBtn">🔄 รีเซ็ต</button>
     </div>
 
@@ -121,6 +121,7 @@
         
         let isSoundMuted = false;
         let audio = null;
+        let modelLoaded = false;
         
         function initAudio() {
             audio = new Audio();
@@ -128,12 +129,10 @@
             audio.preload = 'auto';
             audio.volume = 0.8;
             
-            audio.oncanplaythrough = () => {
-                console.log('Audio ready on iOS');
-            };
-            
             audio.onerror = () => {
-                console.log('Audio file not found');
+                console.log('Audio not found');
+                audio.src = './sound.mp3';
+                audio.load();
             };
         }
         
@@ -141,13 +140,7 @@
             if (!isSoundMuted && audio) {
                 try {
                     audio.currentTime = 0;
-                    const playPromise = audio.play();
-                    if (playPromise) {
-                        playPromise.catch(e => {
-                            console.log('iOS auto-play blocked:', e);
-                            statusDiv.textContent = '🍎 แตะที่หน้าจอเพื่อเปิดเสียง';
-                        });
-                    }
+                    audio.play().catch(e => console.log('iOS play error:', e));
                 } catch(e) {
                     console.log('Sound error:', e);
                 }
@@ -168,10 +161,17 @@
         }
         
         function updateStatus() {
-            statusDiv.textContent = '🍎 กดปุ่ม "เปิด AR" เพื่อเริ่ม';
+            if (modelLoaded) {
+                statusDiv.textContent = '🍎 พร้อมใช้งาน | กด "เปิด AR"';
+            }
         }
         
         function startAR() {
+            if (!modelLoaded) {
+                statusDiv.textContent = '⏳ กรุณารอโหลดโมเดลให้เสร็จก่อน';
+                return;
+            }
+            
             playSound();
             
             if (viewer && viewer.activateAR) {
@@ -199,7 +199,16 @@
         
         viewer.addEventListener('load', () => {
             console.log('Model loaded on iOS');
-            statusDiv.textContent = '✅ พร้อมใช้งาน | กด "เปิด AR"';
+            modelLoaded = true;
+            arBtn.disabled = false;
+            arBtn.textContent = '📍 เปิด AR';
+            statusDiv.textContent = '✅ โหลดโมเดลสำเร็จ | กด "เปิด AR"';
+            playSound();
+        });
+        
+        viewer.addEventListener('error', (e) => {
+            console.error('Model error:', e);
+            statusDiv.textContent = '❌ โหลดโมเดลไม่สำเร็จ';
         });
         
         viewer.addEventListener('ar-status', (e) => {
@@ -210,9 +219,11 @@
             }
         });
         
-        // สำหรับ iOS ต้องมี user interaction ก่อนเล่นเสียง
+        // iOS ต้องมี user interaction ก่อนเล่นเสียง
         function firstInteraction() {
-            playSound();
+            if (audio && audio.paused) {
+                playSound();
+            }
             document.removeEventListener('touchstart', firstInteraction);
             document.removeEventListener('click', firstInteraction);
         }
@@ -224,7 +235,6 @@
         resetBtn.onclick = resetCamera;
         
         initAudio();
-        updateStatus();
     </script>
 </body>
 </html>
