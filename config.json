@@ -1,0 +1,17 @@
+{
+    "appName": "H-500 Urine Analyzer AR",
+    "version": "2.0.0",
+    "models": {
+        "android": "https://raw.githubusercontent.com/yourusername/h500-ar-project/main/model.glb",
+        "ios": "https://raw.githubusercontent.com/yourusername/h500-ar-project/main/model.usdz"
+    },
+    "features": {
+        "arPlacement": "floor",
+        "draggable": true,
+        "autoRotate": true
+    },
+    "narration": {
+        "url": "https://raw.githubusercontent.com/yourusername/h500-ar-project/main/sound.mp3",
+        "autoPlay": true
+    }
+}
