@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>H-500 Analyzer - iOS ARKit</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+        
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background-color: #898989;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            z-index: 10;
+            padding: 10px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: bold;
+            background: rgba(0,230,118,0.95);
+            color: black;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:active { transform: scale(0.95); }
+        
+        .status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        
+        @media (max-width: 768px) {
+            button { padding: 10px 18px; font-size: 12px; }
+            .status { font-size: 11px; white-space: normal; max-width: 90%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">
+        🍎 iOS ARKit Mode | กำลังเตรียมระบบ...
+    </div>
+    <div class="controls">
+        <button id="ar-btn">📍 เริ่ม AR</button>
+        <button id="reset-btn">🔄 รีเซ็ต</button>
+    </div>
+
+    <model-viewer 
+        id="viewer"
+        src="../model.glb"
+        ios-src="../model.usdz"
+        ar
+        ar-modes="scene-viewer quick-look webxr"
+        ar-scale="auto"
+        ar-placement="floor"
+        ar-status="true"
+        camera-controls
+        tone-mapping="neutral"
+        shadow-intensity="1"
+        exposure="1.5"
+        environment-intensity="1.5"
+        auto-rotate
+        rotation-per-second="5deg"
+        style="width: 100%; height: 100%;">
+    </model-viewer>
+
+    <script>
+        const viewer = document.getElementById('viewer');
+        const statusDiv = document.getElementById('status');
+        const arBtn = document.getElementById('ar-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        
+        let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        // ปรับปรุงสำหรับ iOS
+        if (isIOS) {
+            viewer.exposure = '1.8';
+            viewer.environmentIntensity = '1.8';
+            statusDiv.innerHTML = '🍎 iOS ARKit (ปรับแต่งพิเศษ) | ขยับกล้องช้าๆ เพื่อหาพื้น';
+        }
+        
+        // เริ่ม AR
+        function startAR() {
+            if (viewer.canActivateAR) {
+                statusDiv.innerHTML = '🔍 กำลังค้นหาพื้น... ขยับกล้องช้าๆ (แนะนำ: หันไปที่พื้นที่มีลวดลาย)';
+                viewer.activateAR();
+            } else {
+                statusDiv.innerHTML = '⚠️ อุปกรณ์นี้ไม่รองรับ AR';
+            }
+        }
+        
+        // รีเซ็ต
+        function resetCamera() {
+            viewer.cameraOrbit = '0deg 75deg auto';
+            viewer.cameraTarget = 'auto auto auto';
+            statusDiv.innerHTML = '🔄 รีเซ็ตตำแหน่งกล้องเรียบร้อย';
+            setTimeout(() => {
+                statusDiv.innerHTML = '🍎 พร้อมใช้งาน | แตะ "เริ่ม AR" เพื่อเริ่มระบบ';
+            }, 2000);
+        }
+        
+        // ตรวจจับสถานะ AR
+        viewer.addEventListener('ar-status', (event) => {
+            console.log('AR Status:', event.detail.status);
+            
+            if (event.detail.status === 'session-started') {
+                statusDiv.innerHTML = '✅ จับพื้นสำเร็จ! แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+                setTimeout(() => {
+                    statusDiv.innerHTML = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย | ใช้นิ้ว 2 นิ้วเพื่อหมุน/ซูม';
+                }, 3000);
+            }
+            
+            if (event.detail.status === 'failed') {
+                statusDiv.innerHTML = '⚠️ ไม่พบพื้น ลองขยับกล้องช้าๆ หรือหันไปที่พื้นอื่น';
+                setTimeout(() => {
+                    statusDiv.innerHTML = '🍎 iOS: ขยับกล้องช้าๆ มองพื้นที่มีแสงสว่าง';
+                }, 3000);
+            }
+        });
+        
+        // โหลดโมเดลเสร็จ
+        viewer.addEventListener('load', () => {
+            statusDiv.innerHTML = '✅ โหลดโมเดลสำเร็จ | พร้อมใช้งาน';
+            setTimeout(() => {
+                statusDiv.innerHTML = '🍎 แตะ "เริ่ม AR" เพื่อเริ่มระบบ';
+            }, 2000);
+        });
+        
+        arBtn.onclick = startAR;
+        resetBtn.onclick = resetCamera;
+    </script>
+</body>
+</html>
