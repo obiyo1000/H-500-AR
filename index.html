@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>H-500 Urine Analyzer AR - ปรับปรุงการจับพื้น</title>
+    <title>H-500 Urine Analyzer AR - Optimized for iOS</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     
     <style>
@@ -13,7 +13,7 @@
             width: 100%; 
             height: 100%; 
             overflow: hidden; 
-            font-family: 'Sarabun', sans-serif; 
+            font-family: -apple-system, 'Sarabun', sans-serif; 
         }
         
         #splash-screen {
@@ -45,10 +45,6 @@
             transition: transform 0.2s;
         }
 
-        #start-btn:active {
-            transform: scale(0.95);
-        }
-
         model-viewer {
             width: 100%; 
             height: 100%; 
@@ -62,27 +58,27 @@
             right: 0;
             display: flex;
             justify-content: center;
-            gap: 15px;
+            gap: 12px;
             z-index: 10;
             padding: 10px;
             flex-wrap: wrap;
         }
 
-        .ar-button-custom, .reset-button {
+        .ar-button-custom, .reset-button, .retry-ar-btn {
             background-color: rgba(0,230,118,0.95);
             color: black;
             border-radius: 50px;
             border: none;
-            padding: 12px 24px;
+            padding: 12px 20px;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             backdrop-filter: blur(10px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .reset-button {
@@ -90,7 +86,12 @@
             color: black;
         }
 
-        .ar-button-custom:active, .reset-button:active {
+        .retry-ar-btn {
+            background-color: rgba(255,152,0,0.95);
+            color: white;
+        }
+
+        .ar-button-custom:active, .reset-button:active, .retry-ar-btn:active {
             transform: scale(0.95);
         }
 
@@ -99,27 +100,62 @@
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.85);
             color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
+            padding: 12px 20px;
+            border-radius: 25px;
             font-size: 14px;
             text-align: center;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(10px);
             z-index: 10;
             pointer-events: none;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 120px;
+            left: 20px;
+            right: 20px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+            z-index: 10;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #00e676;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
         }
 
         @media (max-width: 768px) {
-            .ar-button-custom, .reset-button {
-                padding: 10px 18px;
-                font-size: 14px;
+            .ar-button-custom, .reset-button, .retry-ar-btn {
+                padding: 10px 16px;
+                font-size: 12px;
             }
             
             .instruction {
-                font-size: 12px;
+                font-size: 11px;
+                padding: 8px 16px;
+                white-space: normal;
+                max-width: 90%;
                 top: 10px;
             }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .detecting {
+            animation: pulse 1s infinite;
         }
     </style>
 </head>
@@ -146,8 +182,8 @@
         camera-controls 
         tone-mapping="neutral"
         shadow-intensity="1"
-        exposure="1.0"
-        environment-intensity="1.0"
+        exposure="1.2"
+        environment-intensity="1.2"
         auto-rotate
         rotation-per-second="10deg"
         interaction-prompt="auto"
@@ -157,15 +193,21 @@
 
     <div class="control-panel">
         <button class="ar-button-custom" id="custom-ar-btn">
-            📍 วางวัตถุในพื้นที่จริง (AR)
+            📍 เริ่ม AR
         </button>
         <button class="reset-button" id="reset-btn">
-            🔄 รีเซ็ตตำแหน่งกล้อง
+            🔄 รีเซ็ต
+        </button>
+        <button class="retry-ar-btn" id="retry-ar-btn" style="display:none;">
+            🔁 ลองอีกครั้ง
         </button>
     </div>
 
     <div class="instruction" id="instruction-text">
-        💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย
+        💡 ขยับกล้องช้าๆ เพื่อหาพื้น
+    </div>
+    <div class="progress-bar" id="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
     </div>
 
     <script>
@@ -175,31 +217,130 @@
         const viewer = document.getElementById('viewer');
         const customArBtn = document.getElementById('custom-ar-btn');
         const resetBtn = document.getElementById('reset-btn');
+        const retryArBtn = document.getElementById('retry-ar-btn');
         const instructionText = document.getElementById('instruction-text');
+        const progressBar = document.getElementById('progress-bar');
+        const progressFill = document.getElementById('progress-fill');
 
-        // ฟังก์ชันเริ่มต้น AR
+        let arStartTime = 0;
+        let isIOS = false;
+        let retryCount = 0;
+
+        // ตรวจสอบว่าเป็น iOS หรือไม่
+        function detectIOS() {
+            const ua = navigator.userAgent;
+            const isIPad = /iPad/.test(ua);
+            const isIPhone = /iPhone/.test(ua);
+            const isIOSDevice = isIPad || isIPhone || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            return isIOSDevice;
+        }
+
+        isIOS = detectIOS();
+
+        // ปรับปรุงการตรวจจับพื้นสำหรับ iOS โดยเฉพาะ
+        function optimizeForIOS() {
+            if (isIOS) {
+                console.log('iOS detected - applying optimizations');
+                
+                // เพิ่ม exposure และ environment intensity เพื่อให้ ARKit จับพื้นได้ดีขึ้น
+                viewer.exposure = '1.5';
+                viewer.environmentIntensity = '1.5';
+                
+                // ลดความเร็วการหมุนอัตโนมัติเพื่อลดภาระ CPU
+                viewer.rotationPerSecond = '5deg';
+                
+                // เพิ่ม shadow intensity เพื่อให้เห็นเงาชัดขึ้น
+                viewer.shadowIntensity = '1.5';
+                
+                instructionText.innerHTML = '📱 iOS: ขยับกล้องช้าๆ ในที่ที่มีแสงเพียงพอ';
+                
+                // แสดงคำแนะนำเพิ่มเติม
+                setTimeout(() => {
+                    instructionText.innerHTML = '💡 แนะนำ: หันกล้องไปที่พื้นที่มีลวดลายชัดเจน';
+                }, 3000);
+            } else {
+                instructionText.innerHTML = '🤖 Android: พร้อมใช้งาน | ขยับกล้องเพื่อหาพื้น';
+            }
+        }
+
+        // เริ่ม AR พร้อมเทคนิคเพิ่มความเร็วสำหรับ iOS
         function startAR() {
             if (viewer.canActivateAR) {
+                arStartTime = Date.now();
+                
+                // แสดง progress bar
+                progressBar.style.display = 'block';
+                progressFill.style.width = '0%';
+                
+                // จำลองการโหลด
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 5;
+                    if (progress <= 80) {
+                        progressFill.style.width = progress + '%';
+                    }
+                }, 100);
+                
+                instructionText.innerHTML = '🔍 กำลังค้นหาพื้น... ขยับกล้องช้าๆ';
+                instructionText.classList.add('detecting');
+                
+                // สำหรับ iOS: เพิ่มเวลาในการตรวจจับ
+                const detectionTimeout = isIOS ? 5000 : 3000;
+                
+                // เรียก activateAR
                 viewer.activateAR();
                 
-                // แสดงข้อความแจ้งเตือน
-                instructionText.textContent = '🔍 กำลังค้นหาพื้น... ขยับกล้องช้าๆ';
-                instructionText.style.background = 'rgba(0,230,118,0.9)';
+                // ตั้งเวลา timeout สำหรับ iOS
+                const timeoutId = setTimeout(() => {
+                    clearInterval(progressInterval);
+                    const elapsed = Date.now() - arStartTime;
+                    
+                    if (elapsed >= detectionTimeout) {
+                        progressFill.style.width = '100%';
+                        instructionText.innerHTML = '⚠️ ยังไม่พบพื้น ลองเลื่อนกล้องช้าๆ หรือหันไปที่พื้นอื่น';
+                        instructionText.classList.remove('detecting');
+                        instructionText.style.background = 'rgba(255,152,0,0.9)';
+                        
+                        // แสดงปุ่มลองอีกครั้ง
+                        retryArBtn.style.display = 'flex';
+                        
+                        setTimeout(() => {
+                            if (progressBar.style.display === 'block') {
+                                progressBar.style.display = 'none';
+                            }
+                        }, 2000);
+                    }
+                }, detectionTimeout);
+                
+                // บันทึก timeout id เพื่อลบเมื่อสำเร็จ
+                viewer._arTimeoutId = timeoutId;
+                viewer._progressInterval = progressInterval;
+                
+            } else {
+                instructionText.innerHTML = '⚠️ อุปกรณ์นี้ไม่รองรับ AR';
+                instructionText.style.background = 'rgba(255,0,0,0.8)';
+            }
+        }
+
+        // รีเซ็ต AR session
+        function resetARSession() {
+            if (viewer.canActivateAR) {
+                // รีเซ็ตพารามิเตอร์
+                if (isIOS) {
+                    viewer.exposure = '1.5';
+                    viewer.environmentIntensity = '1.5';
+                }
+                
+                instructionText.innerHTML = '🔄 กำลังรีเซ็ต... ลองเริ่ม AR ใหม่';
+                instructionText.style.background = 'rgba(0,230,118,0.8)';
+                
+                // ซ่อนปุ่มลองอีกครั้ง
+                retryArBtn.style.display = 'none';
                 
                 setTimeout(() => {
-                    instructionText.textContent = '✅ จับพื้นสำเร็จ! แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
-                    setTimeout(() => {
-                        instructionText.style.background = 'rgba(0,0,0,0.7)';
-                        setTimeout(() => {
-                            if (instructionText.textContent.includes('สำเร็จ')) {
-                                instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
-                            }
-                        }, 3000);
-                    }, 2000);
-                }, 2000);
-            } else {
-                instructionText.textContent = '⚠️ อุปกรณ์นี้ไม่รองรับ AR';
-                instructionText.style.background = 'rgba(255,0,0,0.8)';
+                    instructionText.style.background = 'rgba(0,0,0,0.85)';
+                    startAR();
+                }, 1000);
             }
         }
 
@@ -207,31 +348,37 @@
         function resetCamera() {
             viewer.cameraOrbit = '0deg 75deg auto';
             viewer.cameraTarget = 'auto auto auto';
-            instructionText.textContent = '🔄 รีเซ็ตตำแหน่งกล้องเรียบร้อย';
+            instructionText.innerHTML = '🔄 รีเซ็ตตำแหน่งกล้องเรียบร้อย';
             instructionText.style.background = 'rgba(0,230,118,0.8)';
             setTimeout(() => {
-                instructionText.style.background = 'rgba(0,0,0,0.7)';
-                instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+                instructionText.style.background = 'rgba(0,0,0,0.85)';
+                instructionText.innerHTML = isIOS ? '📱 ขยับกล้องช้าๆ เพื่อหา AR พื้น' : '🤖 พร้อมใช้งาน';
             }, 2000);
         }
 
-        // เริ่มต้นแอพพลิเคชัน
+        // เริ่มต้นแอพ
         startBtn.onclick = () => {
             splash.style.opacity = '0';
             setTimeout(() => {
                 splash.style.display = 'none';
-                // เล่นเสียง narration
                 audio.play().catch(e => console.log('Audio play failed:', e));
-                
-                // แสดงคำแนะนำ
-                instructionText.style.opacity = '1';
+                optimizeForIOS();
             }, 500);
         };
 
-        // ปุ่มเปิด AR แบบกำหนดเอง
+        // ปุ่ม AR
         customArBtn.onclick = (e) => {
             e.preventDefault();
+            retryCount = 0;
             startAR();
+        };
+
+        // ปุ่มลองอีกครั้ง
+        retryArBtn.onclick = (e) => {
+            e.preventDefault();
+            retryCount++;
+            retryArBtn.style.display = 'none';
+            resetARSession();
         };
 
         // ปุ่มรีเซ็ต
@@ -245,67 +392,115 @@
             console.log('AR Status:', event.detail.status);
             
             if (event.detail.status === 'session-started') {
-                // เล่นเสียงเมื่อเริ่ม AR session
+                // ล้าง timeout และ interval
+                if (viewer._arTimeoutId) {
+                    clearTimeout(viewer._arTimeoutId);
+                }
+                if (viewer._progressInterval) {
+                    clearInterval(viewer._progressInterval);
+                }
+                
+                // อัปเดต progress bar
+                progressFill.style.width = '100%';
+                
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                }, 500);
+                
+                // เล่นเสียง
                 audio.currentTime = 0;
                 audio.play().catch(e => console.log('Audio play failed:', e));
                 
-                instructionText.textContent = '🎯 โหมด AR เริ่มทำงานแล้ว | แตะค้างเพื่อเคลื่อนย้ายวัตถุ';
+                instructionText.classList.remove('detecting');
+                
+                if (isIOS) {
+                    const detectionTime = Date.now() - arStartTime;
+                    instructionText.innerHTML = `✅ จับพื้นสำเร็จ! (${detectionTime/1000} วินาที) | แตะค้างเพื่อเคลื่อนย้าย`;
+                } else {
+                    instructionText.innerHTML = '✅ โหมด AR เริ่มทำงาน | แตะค้างเพื่อเคลื่อนย้ายวัตถุ';
+                }
+                
                 instructionText.style.background = 'rgba(0,230,118,0.9)';
+                retryArBtn.style.display = 'none';
                 
                 setTimeout(() => {
-                    instructionText.style.background = 'rgba(0,0,0,0.7)';
-                    instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
-                }, 3000);
+                    instructionText.style.background = 'rgba(0,0,0,0.85)';
+                    instructionText.innerHTML = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+                }, 4000);
             }
             
             if (event.detail.status === 'failed') {
-                instructionText.textContent = '⚠️ ไม่พบพื้น กรุณาขยับกล้องช้าๆ';
+                if (viewer._arTimeoutId) {
+                    clearTimeout(viewer._arTimeoutId);
+                }
+                if (viewer._progressInterval) {
+                    clearInterval(viewer._progressInterval);
+                }
+                
+                progressBar.style.display = 'none';
+                instructionText.classList.remove('detecting');
+                
+                let errorMsg = '⚠️ ไม่พบพื้น กรุณา:';
+                if (isIOS) {
+                    errorMsg = '⚠️ iOS: ขยับกล้องช้าๆ มองพื้นที่มีแสงและลวดลาย';
+                } else {
+                    errorMsg = '⚠️ ไม่พบพื้น ขยับกล้องช้าๆ';
+                }
+                
+                instructionText.innerHTML = errorMsg;
                 instructionText.style.background = 'rgba(255,0,0,0.8)';
+                retryArBtn.style.display = 'flex';
+                
                 setTimeout(() => {
-                    instructionText.style.background = 'rgba(0,0,0,0.7)';
-                    instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
-                }, 3000);
+                    if (instructionText.innerHTML.includes('ไม่พบพื้น')) {
+                        instructionText.style.background = 'rgba(0,0,0,0.85)';
+                    }
+                }, 5000);
             }
         });
 
         // โหลดโมเดลเสร็จ
         viewer.addEventListener('load', () => {
             console.log('Model loaded successfully');
-            instructionText.textContent = '✅ โหลดโมเดลสำเร็จ | พร้อมใช้งาน';
-            setTimeout(() => {
-                instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
-            }, 2000);
+            optimizeForIOS();
         });
 
-        // รองรับการเคลื่อนย้ายวัตถุด้วย drag (ในโหมด non-AR)
-        let isDragging = false;
-        let lastX = 0;
+        // รองรับการเคลื่อนย้ายวัตถุบนมือถือ
+        let touchStartX = 0;
+        let isTouching = false;
         
-        viewer.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            lastX = e.clientX;
+        viewer.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                isTouching = true;
+            }
         });
         
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-        
-        viewer.addEventListener('mousemove', (e) => {
-            if (isDragging && !viewer.canActivateAR) {
-                const deltaX = e.clientX - lastX;
+        viewer.addEventListener('touchmove', (e) => {
+            if (isTouching && e.touches.length === 1 && !viewer.canActivateAR) {
+                const deltaX = e.touches[0].clientX - touchStartX;
                 const currentOrbit = viewer.cameraOrbit;
                 const orbitMatch = currentOrbit.match(/([-\d.]+)deg\s+([-\d.]+)deg/);
                 if (orbitMatch) {
                     const newYaw = parseFloat(orbitMatch[1]) + deltaX * 0.5;
                     viewer.cameraOrbit = `${newYaw}deg ${orbitMatch[2]}deg auto`;
                 }
-                lastX = e.clientX;
+                touchStartX = e.touches[0].clientX;
             }
         });
+        
+        viewer.addEventListener('touchend', () => {
+            isTouching = false;
+        });
 
-        // แสดงคำแนะนำเพิ่มเติมสำหรับมือถือ
-        if ('ontouchstart' in window) {
-            instructionText.innerHTML = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย | ใช้นิ้วถนัด 2 นิ้วเพื่อหมุน/ซูม';
+        // แสดงคำแนะนำสำหรับ iOS โดยเฉพาะ
+        if (isIOS) {
+            setTimeout(() => {
+                instructionText.innerHTML = '📱 คำแนะนำ iOS: ขยับกล้องช้าๆ หาพื้นที่มีแสงสว่าง';
+                setTimeout(() => {
+                    instructionText.innerHTML = '💡 แนะนำ: หันกล้องไปที่พื้นคอนกรีตหรือพื้นไม้';
+                }, 4000);
+            }, 1000);
         }
     </script>
 </body>
