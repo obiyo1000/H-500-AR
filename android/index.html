@@ -88,6 +88,20 @@
             box-shadow: none;
         }
         
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            z-index: 30;
+            font-size: 14px;
+            display: none;
+        }
+        
         @media (max-width: 768px) {
             button { padding: 10px 20px; font-size: 14px; }
             .status { font-size: 11px; white-space: normal; max-width: 85%; top: 10px; }
@@ -100,9 +114,12 @@
         <div class="status" id="status">
             🤖 Android | กำลังโหลด...
         </div>
+        <div class="loading" id="loading">
+            ⏳ กำลังโหลดโมเดล...
+        </div>
         <button class="sound-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
         <div class="controls">
-            <button id="arBtn">📍 เปิด AR</button>
+            <button id="arBtn" disabled>📍 เปิด AR (รอโหลด...)</button>
             <button id="resetBtn">🔄 รีเซ็ต</button>
         </div>
         
@@ -122,16 +139,39 @@
     <script>
         const viewer = document.getElementById('viewer');
         const statusDiv = document.getElementById('status');
+        const loadingDiv = document.getElementById('loading');
         const arBtn = document.getElementById('arBtn');
         const resetBtn = document.getElementById('resetBtn');
         const soundBtn = document.getElementById('soundBtn');
         
         let isSoundMuted = false;
         let audio = null;
+        let modelLoaded = false;
+        
+        // หา URL ของโมเดลให้ถูกต้อง
+        function getModelUrl() {
+            // ได้ URL ปัจจุบัน เช่น https://xxx.github.io/h500-ar-project/android/
+            const currentPath = window.location.pathname;
+            const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
+            
+            // ถ้าอยู่ในโฟลเดอร์ android/ ให้ขึ้นไปข้างนอก 1 ระดับ
+            if (basePath.includes('/android/')) {
+                return '../model.glb';
+            }
+            return './model.glb';
+        }
+        
+        // อัปเดต src ของโมเดลให้ถูกต้อง
+        function updateModelSrc() {
+            const modelUrl = getModelUrl();
+            console.log('Loading model from:', modelUrl);
+            viewer.src = modelUrl;
+        }
         
         // สร้าง Audio
         function initAudio() {
             audio = new Audio();
+            // เสียงอยู่ใน root เช่นกัน
             audio.src = '../sound.mp3';
             audio.preload = 'auto';
             audio.volume = 0.8;
@@ -141,40 +181,17 @@
             };
             
             audio.onerror = () => {
-                console.log('Audio not found, creating beep sound');
-                // ถ้าไม่มีไฟล์เสียง ให้สร้างเสียงบี๊บแทน
-                createBeepSound();
+                console.log('Audio not found, trying alternative path');
+                audio.src = './sound.mp3';
+                audio.load();
             };
-        }
-        
-        // สร้างเสียงบี๊บแทน (fallback)
-        function createBeepSound() {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (AudioContext) {
-                const audioCtx = new AudioContext();
-                audio = {
-                    play: () => {
-                        const oscillator = audioCtx.createOscillator();
-                        const gainNode = audioCtx.createGain();
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioCtx.destination);
-                        oscillator.frequency.value = 880;
-                        gainNode.gain.value = 0.3;
-                        oscillator.start();
-                        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1);
-                    },
-                    paused: true
-                };
-            }
         }
         
         function playSound() {
             if (!isSoundMuted && audio) {
                 try {
-                    if (audio.play) {
-                        audio.currentTime = 0;
-                        audio.play().catch(e => console.log('Play error:', e));
-                    }
+                    audio.currentTime = 0;
+                    audio.play().catch(e => console.log('Play error:', e));
                 } catch(e) {
                     console.log('Sound error:', e);
                 }
@@ -195,20 +212,28 @@
         }
         
         function updateStatus() {
-            statusDiv.textContent = '🤖 กดปุ่ม "เปิด AR" เพื่อเริ่ม';
+            if (modelLoaded) {
+                statusDiv.textContent = '🤖 พร้อมใช้งาน | กด "เปิด AR"';
+            } else {
+                statusDiv.textContent = '🤖 กำลังโหลดโมเดล...';
+            }
         }
         
-        // เปิด AR โดยใช้ scene-viewer
+        // เปิด AR
         function startAR() {
-            playSound(); // เล่นเสียงเมื่อกด
+            if (!modelLoaded) {
+                statusDiv.textContent = '⏳ กรุณารอโหลดโมเดลให้เสร็จก่อน';
+                return;
+            }
             
+            playSound();
             statusDiv.textContent = '🔍 กำลังเปิด AR...';
             
-            // วิธีที่ 1: ใช้ intent ของ Google
+            // ใช้ intent ของ Google โดยตรง (วิธีที่แน่นอนที่สุด)
             const modelUrl = window.location.origin + '/model.glb';
             const intentUrl = `intent://arvr.google.com/scene-viewer/1.0?file=${encodeURIComponent(modelUrl)}&mode=ar_preferred#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end`;
             
-            // วิธีที่ 2: ใช้ viewer activateAR
+            // พยายามใช้ activateAR ก่อน
             if (viewer && viewer.activateAR) {
                 try {
                     viewer.activateAR();
@@ -216,14 +241,17 @@
                     setTimeout(() => {
                         statusDiv.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
                     }, 3000);
+                    return;
                 } catch(e) {
-                    console.log('activateAR failed, trying intent');
-                    window.location.href = intentUrl;
+                    console.log('activateAR failed:', e);
                 }
-            } else {
-                // Fallback ใช้ intent
-                window.location.href = intentUrl;
             }
+            
+            // Fallback ใช้ intent
+            statusDiv.textContent = '🔄 กำลังเปิด Google AR...';
+            setTimeout(() => {
+                window.location.href = intentUrl;
+            }, 500);
         }
         
         function resetCamera() {
@@ -235,16 +263,28 @@
             }
         }
         
-        // Event listeners
+        // Event listeners สำหรับ model-viewer
         viewer.addEventListener('load', () => {
-            console.log('Model loaded');
-            statusDiv.textContent = '✅ พร้อมใช้งาน | กด "เปิด AR"';
+            console.log('Model loaded successfully');
+            modelLoaded = true;
+            loadingDiv.style.display = 'none';
+            arBtn.disabled = false;
+            arBtn.textContent = '📍 เปิด AR';
+            statusDiv.textContent = '✅ โหลดโมเดลสำเร็จ | กด "เปิด AR"';
             playSound(); // เล่นเสียงเมื่อโหลดเสร็จ
         });
         
         viewer.addEventListener('error', (e) => {
-            console.error('Model error:', e);
-            statusDiv.textContent = '⚠️ โหลดโมเดลไม่สำเร็จ';
+            console.error('Model loading error:', e);
+            loadingDiv.style.display = 'none';
+            statusDiv.textContent = '❌ โหลดโมเดลไม่สำเร็จ กำลังลองใหม่...';
+            
+            // ลองเปลี่ยน path และโหลดใหม่
+            setTimeout(() => {
+                const alternativePath = './model.glb';
+                console.log('Trying alternative path:', alternativePath);
+                viewer.src = alternativePath;
+            }, 2000);
         });
         
         viewer.addEventListener('ar-status', (e) => {
@@ -258,19 +298,21 @@
             }
         });
         
+        // ปุ่ม event
         arBtn.onclick = startAR;
         resetBtn.onclick = resetCamera;
         
-        // ให้เสียงทำงานเมื่อมีการแตะครั้งแรก (bypass auto-play policy)
-        document.body.addEventListener('click', function initAudioOnFirstClick() {
-            if (audio && audio.paused !== false) {
+        // เปิดเสียงเมื่อมีการแตะครั้งแรก
+        document.body.addEventListener('click', function initAudio() {
+            if (audio && audio.paused) {
                 playSound();
             }
-            document.body.removeEventListener('click', initAudioOnFirstClick);
         });
         
+        // เริ่มต้น
         initAudio();
-        updateStatus();
+        updateModelSrc();
+        loadingDiv.style.display = 'block';
     </script>
 </body>
 </html>
