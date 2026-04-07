@@ -2,86 +2,549 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>H-500 Urine Analyzer AR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>H-500 Urine Analyzer AR - Professional</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            font-family: 'Sarabun', sans-serif; 
+        }
         
+        /* Splash Screen */
         #splash-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
             background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
-            display: flex; flex-direction: column; justify-content: center;
-            align-items: center; z-index: 100; color: white; transition: 0.5s;
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center;
+            align-items: center; 
+            z-index: 100; 
+            color: white; 
+            transition: opacity 0.5s ease;
         }
         
         #start-btn {
-            padding: 16px 40px; font-size: 20px; font-weight: bold;
-            background: #00e676; color: black; border: none; border-radius: 50px;
-            cursor: pointer; box-shadow: 0 0 20px rgba(0,230,118,0.5);
+            padding: 16px 40px; 
+            font-size: 20px; 
+            font-weight: bold;
+            background: #00e676; 
+            color: black; 
+            border: none; 
+            border-radius: 50px;
+            cursor: pointer; 
+            box-shadow: 0 0 20px rgba(0,230,118,0.5);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-
+        
+        #start-btn:active {
+            transform: scale(0.96);
+        }
+        
+        /* Model Viewer */
         model-viewer {
-            width: 100%; height: 100%; background-color: #898989;
+            width: 100%; 
+            height: 100%; 
+            background-color: #e0e0e0;
         }
-
+        
+        /* AR Button */
         #ar-button {
-            background-color: #00e676; color: black; border-radius: 50px; 
-            border: none; padding: 12px 24px; position: absolute; bottom: 50px; 
-            left: 50%; transform: translateX(-50%); font-weight: bold; 
-            display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background-color: #00e676; 
+            color: black; 
+            border-radius: 50px; 
+            border: none; 
+            padding: 14px 28px; 
+            position: absolute; 
+            bottom: 30px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            font-weight: bold; 
+            font-size: 16px;
+            display: flex; 
+            align-items: center; 
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 20;
+            transition: transform 0.2s, background 0.2s;
+        }
+        
+        #ar-button:active {
+            transform: translateX(-50%) scale(0.96);
+        }
+        
+        /* Status Bar */
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            text-align: center;
+            z-index: 20;
+            pointer-events: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        /* Sound Control */
+        .sound-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            padding: 8px 12px;
+            z-index: 30;
+            cursor: pointer;
+            font-size: 18px;
+            color: white;
+            border: none;
+            transition: transform 0.2s;
+        }
+        
+        .sound-control:active {
+            transform: scale(0.9);
+        }
+        
+        /* Loading Indicator */
+        .loading-indicator {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 20;
+            display: none;
+            white-space: nowrap;
+        }
+        
+        /* Instruction Toast */
+        .instruction-toast {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            color: #00e676;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            z-index: 20;
+            text-align: center;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            #ar-button {
+                padding: 12px 24px;
+                font-size: 14px;
+                bottom: 20px;
+            }
+            .status-bar {
+                font-size: 11px;
+                top: 10px;
+                left: 10px;
+                right: 70px;
+            }
+            .sound-control {
+                top: 10px;
+                right: 10px;
+                font-size: 16px;
+                padding: 6px 10px;
+            }
+            .instruction-toast {
+                font-size: 11px;
+                white-space: normal;
+                max-width: 85%;
+                bottom: 100px;
+            }
+        }
+        
+        /* Animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .pulse-animation {
+            animation: pulse 1.5s infinite;
+        }
+        
+        /* Hide default AR button */
+        [slot="ar-button"] {
+            display: none !important;
         }
     </style>
 </head>
 <body>
 
+    <!-- Splash Screen -->
     <div id="splash-screen">
         <h1 style="margin-bottom: 10px;">DIRUI</h1>
-        <p style="margin-bottom: 30px; color: #ccc;">H-500 Urine Analyzer AR</p>
+        <p style="margin-bottom: 10px; color: #ccc;">H-500 Urine Analyzer AR</p>
+        <p style="margin-bottom: 30px; font-size: 14px; color: #888;">เทคโนโลยีความเป็นจริงเสริม</p>
         <button id="start-btn">เริ่มสัมผัสประสบการณ์ 3D</button>
+        <p style="margin-top: 40px; font-size: 12px; color: #555;">รองรับ Android (ARCore) และ iOS (ARKit)</p>
     </div>
 
-    <audio id="narration" src="./sound.mp3" preload="auto" playsinline></audio>
+    <!-- Audio -->
+    <audio id="narration" preload="auto" playsinline></audio>
 
+    <!-- Model Viewer -->
     <model-viewer 
         id="viewer"
         src="./model.glb" 
         ios-src="./model.usdz"
         ar 
-        ar-modes="scene-viewer quick-look"
+        ar-modes="scene-viewer quick-look webxr"
         ar-scale="auto"
         ar-placement="floor"
-        scale="1.5 1.5 1.5"
         camera-controls 
-	tone-mapping="neutral"
-	shadow-intensity="1"
-	exposure="0.3"
-        
-        <button slot="ar-button" id="ar-button">
-        🔘 วางเครื่อง H-500 Urine Analyzer AR ในพื้นที่จริง
-        </button>
-
+        tone-mapping="neutral"
+        shadow-intensity="0.8"
+        exposure="1.0"
+        environment-intensity="1.0"
+        auto-rotate
+        rotation-per-second="15deg"
+        interaction-prompt="auto"
+        style="width: 100%; height: 100%;">
     </model-viewer>
 
+    <!-- UI Elements -->
+    <div class="status-bar" id="statusBar">
+        🤖 กำลังโหลดระบบ AR...
+    </div>
+    <button class="sound-control" id="soundControl">🔊</button>
+    <button id="ar-button">
+        🎯 วางเครื่อง H-500 ในพื้นที่จริง
+    </button>
+    <div class="loading-indicator" id="loadingIndicator">
+        ⏳ กำลังโหลดโมเดล...
+    </div>
+    <div class="instruction-toast" id="instructionToast">
+        💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย
+    </div>
+
     <script>
+        // DOM Elements
         const splash = document.getElementById('splash-screen');
         const startBtn = document.getElementById('start-btn');
         const audio = document.getElementById('narration');
         const viewer = document.getElementById('viewer');
-
-        startBtn.onclick = () => {
-            splash.style.opacity = '0';
-            setTimeout(() => splash.style.display = 'none', 500);
-            audio.play();
-        };
-
+        const arButton = document.getElementById('ar-button');
+        const statusBar = document.getElementById('statusBar');
+        const soundControl = document.getElementById('soundControl');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const instructionToast = document.getElementById('instructionToast');
+        
+        // State Variables
+        let isSoundMuted = false;
+        let isARMode = false;
+        let modelLoaded = false;
+        let arRetryCount = 0;
+        let toastTimeout = null;
+        
+        // Device Detection
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isAndroid = /Android/.test(navigator.userAgent);
+        
+        // ==================== AUDIO FUNCTIONS ====================
+        function initAudio() {
+            audio.src = './sound.mp3';
+            audio.volume = 0.8;
+            audio.load();
+            
+            audio.addEventListener('canplaythrough', () => {
+                console.log('Audio loaded successfully');
+            });
+            
+            audio.addEventListener('error', (e) => {
+                console.error('Audio error:', e);
+                statusBar.innerHTML = '⚠️ ไม่พบไฟล์เสียง sound.mp3';
+                setTimeout(() => {
+                    if (!isARMode) updateStatusMessage();
+                }, 2000);
+            });
+        }
+        
+        function playSound() {
+            if (!isSoundMuted && audio) {
+                try {
+                    audio.currentTime = 0;
+                    const playPromise = audio.play();
+                    if (playPromise) {
+                        playPromise.catch(e => {
+                            console.log('Auto-play blocked, waiting for user interaction');
+                        });
+                    }
+                } catch(e) {
+                    console.log('Sound error:', e);
+                }
+            }
+        }
+        
+        function toggleSound() {
+            isSoundMuted = !isSoundMuted;
+            soundControl.innerHTML = isSoundMuted ? '🔇' : '🔊';
+            
+            if (!isSoundMuted) {
+                playSound();
+                showToast('🔊 เปิดเสียงแล้ว', 1500);
+            } else {
+                showToast('🔇 ปิดเสียงแล้ว', 1500);
+            }
+        }
+        
+        // ==================== UI FUNCTIONS ====================
+        function showToast(message, duration = 2000) {
+            instructionToast.innerHTML = message;
+            instructionToast.style.opacity = '1';
+            
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                instructionToast.style.opacity = '0';
+            }, duration);
+        }
+        
+        function updateStatusMessage() {
+            if (modelLoaded) {
+                if (isIOS) {
+                    statusBar.innerHTML = '🍎 พร้อมใช้งาน | กดปุ่มด้านล่างเพื่อเริ่ม AR';
+                } else if (isAndroid) {
+                    statusBar.innerHTML = '🤖 พร้อมใช้งาน | กดปุ่มด้านล่างเพื่อเริ่ม AR';
+                } else {
+                    statusBar.innerHTML = '💻 โหมด 3D | กดปุ่มเพื่อเริ่ม AR';
+                }
+            } else {
+                statusBar.innerHTML = '⏳ กำลังโหลดโมเดล...';
+            }
+        }
+        
+        function showLoading(show) {
+            loadingIndicator.style.display = show ? 'block' : 'none';
+        }
+        
+        // ==================== AR FUNCTIONS ====================
+        function startAR() {
+            if (!modelLoaded) {
+                showToast('⏳ กรุณารอให้โมเดลโหลดเสร็จก่อน', 2000);
+                return;
+            }
+            
+            if (viewer.canActivateAR) {
+                playSound();
+                statusBar.innerHTML = '🔍 กำลังเปิด AR... ขยับกล้องช้าๆ';
+                statusBar.classList.add('pulse-animation');
+                
+                try {
+                    viewer.activateAR();
+                } catch(e) {
+                    console.error('AR activation error:', e);
+                    statusBar.innerHTML = '⚠️ เปิด AR ไม่สำเร็จ กรุณาลองอีกครั้ง';
+                    statusBar.classList.remove('pulse-animation');
+                    
+                    // Fallback สำหรับ Android
+                    if (isAndroid) {
+                        setTimeout(() => {
+                            showToast('💡 แนะนำ: ใช้ Google Chrome และติดตั้ง Google Play Services for AR', 4000);
+                        }, 1000);
+                    }
+                }
+            } else {
+                statusBar.innerHTML = '⚠️ อุปกรณ์นี้ไม่รองรับ AR';
+                showToast('⚠️ เบราว์เซอร์หรืออุปกรณ์ไม่รองรับ AR', 3000);
+                
+                // แนะนำการติดตั้งสำหรับ Android
+                if (isAndroid) {
+                    setTimeout(() => {
+                        showToast('📱 แนะนำ: ติดตั้ง Google Play Services for AR และใช้ Chrome', 4000);
+                    }, 2000);
+                }
+            }
+        }
+        
+        function resetCamera() {
+            viewer.cameraOrbit = '0deg 75deg auto';
+            viewer.cameraTarget = 'auto auto auto';
+            showToast('🔄 รีเซ็ตตำแหน่งกล้องเรียบร้อย', 1500);
+        }
+        
+        // ==================== MODEL VIEWER EVENTS ====================
+        viewer.addEventListener('load', () => {
+            console.log('Model loaded successfully');
+            modelLoaded = true;
+            showLoading(false);
+            updateStatusMessage();
+            playSound(); // เล่นเสียงเมื่อโหลดเสร็จ
+            showToast('✅ โหลดโมเดลสำเร็จ', 1500);
+        });
+        
+        viewer.addEventListener('error', (event) => {
+            console.error('Model loading error:', event);
+            modelLoaded = false;
+            showLoading(false);
+            statusBar.innerHTML = '❌ โหลดโมเดลไม่สำเร็จ ตรวจสอบไฟล์ model.glb';
+            
+            // ลองโหลดใหม่
+            setTimeout(() => {
+                if (!modelLoaded) {
+                    showLoading(true);
+                    viewer.src = './model.glb';
+                }
+            }, 3000);
+        });
+        
         viewer.addEventListener('ar-status', (event) => {
-            if (event.detail.status === 'session-started') {
-                audio.currentTime = 0;
-                audio.play();
+            console.log('AR Status:', event.detail.status);
+            
+            switch(event.detail.status) {
+                case 'session-started':
+                    isARMode = true;
+                    statusBar.innerHTML = '✅ โหมด AR เริ่มทำงาน! แตะที่พื้นเพื่อวางวัตถุ';
+                    statusBar.classList.remove('pulse-animation');
+                    playSound();
+                    showToast('🎯 แตะที่พื้นเพื่อวางเครื่อง H-500', 3000);
+                    break;
+                    
+                case 'tracking':
+                    if (isARMode) {
+                        statusBar.innerHTML = '🎯 กำลังตรวจจับพื้น... ขยับกล้องช้าๆ';
+                    }
+                    break;
+                    
+                case 'session-ended':
+                    isARMode = false;
+                    statusBar.innerHTML = '🔄 ออกจากโหมด AR';
+                    statusBar.classList.remove('pulse-animation');
+                    updateStatusMessage();
+                    break;
+                    
+                case 'failed':
+                    isARMode = false;
+                    statusBar.classList.remove('pulse-animation');
+                    arRetryCount++;
+                    
+                    if (arRetryCount <= 2) {
+                        let errorMsg = '⚠️ ไม่พบพื้น ';
+                        if (isIOS) {
+                            errorMsg += 'ลองขยับกล้องช้าๆ ที่พื้นมีลวดลาย';
+                        } else if (isAndroid) {
+                            errorMsg += 'ขยับกล้องช้าๆ และอยู่ในที่แสงสว่าง';
+                        } else {
+                            errorMsg += 'ขยับกล้องช้าๆ';
+                        }
+                        statusBar.innerHTML = errorMsg;
+                        showToast('💡 แนะนำ: ขยับกล้องช้าๆ เป็นรูปตัว S หรือ 8', 4000);
+                    } else {
+                        statusBar.innerHTML = '⚠️ ตรวจจับพื้นไม่สำเร็จ ลองเริ่ม AR ใหม่';
+                        showToast('🔄 กดปุ่ม AR อีกครั้งเพื่อลองใหม่', 3000);
+                    }
+                    break;
             }
         });
+        
+        // รองรับการเคลื่อนย้ายวัตถุ
+        viewer.addEventListener('click', (event) => {
+            if (isARMode) {
+                showToast('✅ วางวัตถุเรียบร้อย | แตะค้างเพื่อเคลื่อนย้าย', 2000);
+            }
+        });
+        
+        // ==================== AUTO-PLAY AUDIO ON FIRST INTERACTION ====================
+        function enableAudioOnFirstInteraction() {
+            if (audio && audio.paused) {
+                playSound();
+            }
+            document.removeEventListener('click', enableAudioOnFirstInteraction);
+            document.removeEventListener('touchstart', enableAudioOnFirstInteraction);
+        }
+        
+        document.addEventListener('click', enableAudioOnFirstInteraction);
+        document.addEventListener('touchstart', enableAudioOnFirstInteraction);
+        
+        // ==================== SPLASH SCREEN ====================
+        startBtn.onclick = () => {
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                playSound();
+                showLoading(true);
+            }, 500);
+        };
+        
+        // ==================== BUTTON EVENTS ====================
+        arButton.onclick = startAR;
+        soundControl.onclick = toggleSound;
+        
+        // รีเซ็ตด้วยการกดปุ่มค้าง (option)
+        let pressTimer = null;
+        arButton.addEventListener('mousedown', () => {
+            pressTimer = setTimeout(() => {
+                resetCamera();
+                showToast('🔄 รีเซ็ตตำแหน่งกล้อง', 1500);
+            }, 2000);
+        });
+        
+        arButton.addEventListener('mouseup', () => {
+            if (pressTimer) clearTimeout(pressTimer);
+        });
+        
+        arButton.addEventListener('mouseleave', () => {
+            if (pressTimer) clearTimeout(pressTimer);
+        });
+        
+        // ==================== INITIALIZATION ====================
+        function init() {
+            initAudio();
+            
+            // ปรับแต่งตาม OS
+            if (isIOS) {
+                viewer.exposure = '1.3';
+                viewer.environmentIntensity = '1.2';
+                statusBar.innerHTML = '🍎 iOS (ARKit) กำลังโหลด...';
+            } else if (isAndroid) {
+                viewer.exposure = '1.0';
+                viewer.environmentIntensity = '1.0';
+                statusBar.innerHTML = '🤖 Android (ARCore) กำลังโหลด...';
+            }
+            
+            // ตั้งเวลา timeout การโหลด
+            setTimeout(() => {
+                if (!modelLoaded) {
+                    statusBar.innerHTML = '⏳ กำลังโหลดโมเดล... หากใช้เวลานาน ให้รีเฟรชหน้า';
+                }
+            }, 5000);
+        }
+        
+        init();
     </script>
 </body>
 </html>
