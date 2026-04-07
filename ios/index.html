@@ -29,7 +29,7 @@
             display: flex;
             justify-content: center;
             gap: 15px;
-            z-index: 20;
+            z-index: 10;
             padding: 10px;
         }
         
@@ -39,11 +39,12 @@
             border-radius: 50px;
             font-size: 16px;
             font-weight: bold;
-            background: #00e676;
+            background: rgba(0,230,118,0.95);
             color: black;
+            backdrop-filter: blur(10px);
             cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             transition: transform 0.2s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         
         button:active { 
@@ -57,35 +58,45 @@
             transform: translateX(-50%);
             background: rgba(0,0,0,0.85);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 30px;
             font-size: 14px;
             text-align: center;
-            z-index: 20;
+            backdrop-filter: blur(10px);
+            z-index: 10;
             pointer-events: none;
             white-space: nowrap;
         }
         
-        .sound-btn {
+        .sound-control {
             position: absolute;
             top: 20px;
             right: 20px;
             background: rgba(0,0,0,0.6);
             border-radius: 50px;
             padding: 8px 12px;
-            z-index: 20;
+            z-index: 10;
             cursor: pointer;
             font-size: 20px;
+            backdrop-filter: blur(5px);
             color: white;
             border: none;
             width: auto;
-            box-shadow: none;
         }
         
         @media (max-width: 768px) {
-            button { padding: 10px 20px; font-size: 14px; }
-            .status { font-size: 11px; white-space: normal; max-width: 85%; top: 10px; }
-            .sound-btn { top: 10px; right: 10px; font-size: 16px; padding: 6px 10px; }
+            button { padding: 12px 20px; font-size: 14px; }
+            .status { font-size: 11px; white-space: normal; max-width: 90%; top: 10px; }
+            .sound-control { top: 10px; right: 10px; font-size: 16px; padding: 6px 10px; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .detecting {
+            animation: pulse 1.5s infinite;
         }
     </style>
 </head>
@@ -93,54 +104,62 @@
     <div class="status" id="status">
         🍎 iOS | กำลังโหลด...
     </div>
-    <button class="sound-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
+    <button class="sound-control" id="soundControl" onclick="toggleSound()">🔊</button>
     <div class="controls">
-        <button id="arBtn" disabled>📍 เปิด AR (รอโหลด...)</button>
-        <button id="resetBtn">🔄 รีเซ็ต</button>
+        <button id="ar-btn">📍 เริ่มโหมด AR</button>
+        <button id="reset-btn">🔄 รีเซ็ตมุมมอง</button>
     </div>
 
     <model-viewer 
         id="viewer"
-        src="../model.glb"
-        ios-src="../model.usdz"
+        src="model.glb"
+        ios-src="model.usdz"
         ar
         ar-modes="quick-look"
         ar-scale="auto"
+        ar-placement="floor"
+        ar-status="true"
         camera-controls
+        tone-mapping="neutral"
+        shadow-intensity="1"
+        exposure="1.5"
         auto-rotate
-        rotation-per-second="10deg"
+        rotation-per-second="5deg"
         style="width: 100%; height: 100%;">
     </model-viewer>
 
     <script>
         const viewer = document.getElementById('viewer');
         const statusDiv = document.getElementById('status');
-        const arBtn = document.getElementById('arBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const soundBtn = document.getElementById('soundBtn');
+        const arBtn = document.getElementById('ar-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const soundControl = document.getElementById('soundControl');
         
         let isSoundMuted = false;
         let audio = null;
-        let modelLoaded = false;
         
         function initAudio() {
             audio = new Audio();
-            audio.src = '../sound.mp3';
+            audio.src = 'sound.mp3';
             audio.preload = 'auto';
             audio.volume = 0.8;
             
+            audio.oncanplaythrough = () => {
+                console.log('Audio ready');
+            };
+            
             audio.onerror = () => {
-                console.log('Audio not found');
-                audio.src = './sound.mp3';
-                audio.load();
+                console.log('Sound file not found');
             };
         }
         
         function playSound() {
-            if (!isSoundMuted && audio) {
+            if (audio && !isSoundMuted) {
                 try {
                     audio.currentTime = 0;
-                    audio.play().catch(e => console.log('iOS play error:', e));
+                    audio.play().catch(e => {
+                        console.log('iOS auto-play blocked:', e);
+                    });
                 } catch(e) {
                     console.log('Sound error:', e);
                 }
@@ -149,73 +168,61 @@
         
         function toggleSound() {
             isSoundMuted = !isSoundMuted;
-            soundBtn.textContent = isSoundMuted ? '🔇' : '🔊';
+            soundControl.innerHTML = isSoundMuted ? '🔇' : '🔊';
             if (!isSoundMuted) {
                 playSound();
-                statusDiv.textContent = '🔊 เปิดเสียงแล้ว';
-                setTimeout(() => updateStatus(), 1500);
+                statusDiv.innerHTML = '🔊 เปิดเสียงแล้ว';
+                setTimeout(() => updateStatus(), 2000);
             } else {
-                statusDiv.textContent = '🔇 ปิดเสียงแล้ว';
-                setTimeout(() => updateStatus(), 1500);
+                statusDiv.innerHTML = '🔇 ปิดเสียงแล้ว';
+                setTimeout(() => updateStatus(), 2000);
             }
         }
         
         function updateStatus() {
-            if (modelLoaded) {
-                statusDiv.textContent = '🍎 พร้อมใช้งาน | กด "เปิด AR"';
-            }
+            statusDiv.innerHTML = '🍎 กดปุ่ม "เริ่มโหมด AR" เพื่อเริ่ม';
         }
         
+        let isARMode = false;
+        
         function startAR() {
-            if (!modelLoaded) {
-                statusDiv.textContent = '⏳ กรุณารอโหลดโมเดลให้เสร็จก่อน';
-                return;
-            }
-            
-            playSound();
-            
-            if (viewer && viewer.activateAR) {
-                try {
-                    viewer.activateAR();
-                    statusDiv.textContent = '🎯 แตะที่พื้นเพื่อวางวัตถุ';
-                    setTimeout(() => {
-                        statusDiv.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
-                    }, 3000);
-                } catch(e) {
-                    console.log('AR error:', e);
-                    statusDiv.textContent = '⚠️ เปิด AR ไม่สำเร็จ';
-                }
+            if (viewer.canActivateAR) {
+                playSound();
+                statusDiv.innerHTML = '🔍 กำลังเปิด AR...';
+                statusDiv.classList.add('detecting');
+                viewer.activateAR();
             } else {
-                statusDiv.textContent = '⚠️ อุปกรณ์ไม่รองรับ AR';
+                statusDiv.innerHTML = '⚠️ อุปกรณ์ไม่รองรับ AR';
             }
         }
         
         function resetCamera() {
             viewer.cameraOrbit = '0deg 75deg auto';
             viewer.cameraTarget = 'auto auto auto';
-            statusDiv.textContent = '🔄 รีเซ็ตเรียบร้อย';
+            statusDiv.innerHTML = '🔄 รีเซ็ตเรียบร้อย';
             setTimeout(() => updateStatus(), 2000);
         }
         
         viewer.addEventListener('load', () => {
-            console.log('Model loaded on iOS');
-            modelLoaded = true;
-            arBtn.disabled = false;
-            arBtn.textContent = '📍 เปิด AR';
-            statusDiv.textContent = '✅ โหลดโมเดลสำเร็จ | กด "เปิด AR"';
+            console.log('Model loaded');
+            statusDiv.innerHTML = '✅ พร้อมใช้งาน | กด "เริ่มโหมด AR"';
             playSound();
         });
         
-        viewer.addEventListener('error', (e) => {
-            console.error('Model error:', e);
-            statusDiv.textContent = '❌ โหลดโมเดลไม่สำเร็จ';
-        });
-        
-        viewer.addEventListener('ar-status', (e) => {
-            console.log('AR Status:', e.detail.status);
-            if (e.detail.status === 'session-started') {
+        viewer.addEventListener('ar-status', (event) => {
+            console.log('AR Status:', event.detail.status);
+            
+            if (event.detail.status === 'session-started') {
+                isARMode = true;
+                statusDiv.innerHTML = '✅ AR เริ่มทำงาน!';
+                statusDiv.classList.remove('detecting');
                 playSound();
-                statusDiv.textContent = '✅ AR เริ่มทำงาน!';
+            }
+            
+            if (event.detail.status === 'failed') {
+                isARMode = false;
+                statusDiv.classList.remove('detecting');
+                statusDiv.innerHTML = '⚠️ ไม่พบพื้น ลองขยับกล้องช้าๆ';
             }
         });
         
