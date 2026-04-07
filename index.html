@@ -2,35 +2,124 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>H-500 Urine Analyzer AR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>H-500 Urine Analyzer AR - ปรับปรุงการจับพื้น</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            font-family: 'Sarabun', sans-serif; 
+        }
         
         #splash-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
             background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
-            display: flex; flex-direction: column; justify-content: center;
-            align-items: center; z-index: 100; color: white; transition: 0.5s;
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center;
+            align-items: center; 
+            z-index: 100; 
+            color: white; 
+            transition: 0.5s;
         }
         
         #start-btn {
-            padding: 16px 40px; font-size: 20px; font-weight: bold;
-            background: #00e676; color: black; border: none; border-radius: 50px;
-            cursor: pointer; box-shadow: 0 0 20px rgba(0,230,118,0.5);
+            padding: 16px 40px; 
+            font-size: 20px; 
+            font-weight: bold;
+            background: #00e676; 
+            color: black; 
+            border: none; 
+            border-radius: 50px;
+            cursor: pointer; 
+            box-shadow: 0 0 20px rgba(0,230,118,0.5);
+            transition: transform 0.2s;
+        }
+
+        #start-btn:active {
+            transform: scale(0.95);
         }
 
         model-viewer {
-            width: 100%; height: 100%; background-color: #898989;
+            width: 100%; 
+            height: 100%; 
+            background-color: #898989;
         }
 
-        #ar-button {
-            background-color: #00e676; color: black; border-radius: 50px; 
-            border: none; padding: 12px 24px; position: absolute; bottom: 50px; 
-            left: 50%; transform: translateX(-50%); font-weight: bold; 
-            display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            z-index: 10;
+            padding: 10px;
+            flex-wrap: wrap;
+        }
+
+        .ar-button-custom, .reset-button {
+            background-color: rgba(0,230,118,0.95);
+            color: black;
+            border-radius: 50px;
+            border: none;
+            padding: 12px 24px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reset-button {
+            background-color: rgba(255,255,255,0.95);
+            color: black;
+        }
+
+        .ar-button-custom:active, .reset-button:active {
+            transform: scale(0.95);
+        }
+
+        .instruction {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .ar-button-custom, .reset-button {
+                padding: 10px 18px;
+                font-size: 14px;
+            }
+            
+            .instruction {
+                font-size: 12px;
+                top: 10px;
+            }
         }
     </style>
 </head>
@@ -38,7 +127,8 @@
 
     <div id="splash-screen">
         <h1 style="margin-bottom: 10px;">DIRUI</h1>
-        <p style="margin-bottom: 30px; color: #ccc;">H-500 Urine Analyzer AR</p>
+        <p style="margin-bottom: 10px; color: #ccc;">H-500 Urine Analyzer AR</p>
+        <p style="margin-bottom: 30px; font-size: 14px; color: #888;">เทคโนโลยี AR ความแม่นยำสูง</p>
         <button id="start-btn">เริ่มสัมผัสประสบการณ์ 3D</button>
     </div>
 
@@ -49,39 +139,174 @@
         src="./model.glb" 
         ios-src="./model.usdz"
         ar 
-        ar-modes="scene-viewer quick-look"
+        ar-modes="scene-viewer quick-look webxr"
         ar-scale="auto"
         ar-placement="floor"
-        scale="1.5 1.5 1.5"
+        ar-status="true"
         camera-controls 
-	tone-mapping="neutral"
-	shadow-intensity="1"
-	exposure="0.3"
-        
-        <button slot="ar-button" id="ar-button">
-        🔘 วางเครื่อง H-500 Urine Analyzer AR ในพื้นที่จริง
-        </button>
-
+        tone-mapping="neutral"
+        shadow-intensity="1"
+        exposure="1.0"
+        environment-intensity="1.0"
+        auto-rotate
+        rotation-per-second="10deg"
+        interaction-prompt="auto"
+        interaction-prompt-threshold="0.5"
+        style="width: 100%; height: 100%;">
     </model-viewer>
+
+    <div class="control-panel">
+        <button class="ar-button-custom" id="custom-ar-btn">
+            📍 วางวัตถุในพื้นที่จริง (AR)
+        </button>
+        <button class="reset-button" id="reset-btn">
+            🔄 รีเซ็ตตำแหน่งกล้อง
+        </button>
+    </div>
+
+    <div class="instruction" id="instruction-text">
+        💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย
+    </div>
 
     <script>
         const splash = document.getElementById('splash-screen');
         const startBtn = document.getElementById('start-btn');
         const audio = document.getElementById('narration');
         const viewer = document.getElementById('viewer');
+        const customArBtn = document.getElementById('custom-ar-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const instructionText = document.getElementById('instruction-text');
 
+        // ฟังก์ชันเริ่มต้น AR
+        function startAR() {
+            if (viewer.canActivateAR) {
+                viewer.activateAR();
+                
+                // แสดงข้อความแจ้งเตือน
+                instructionText.textContent = '🔍 กำลังค้นหาพื้น... ขยับกล้องช้าๆ';
+                instructionText.style.background = 'rgba(0,230,118,0.9)';
+                
+                setTimeout(() => {
+                    instructionText.textContent = '✅ จับพื้นสำเร็จ! แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+                    setTimeout(() => {
+                        instructionText.style.background = 'rgba(0,0,0,0.7)';
+                        setTimeout(() => {
+                            if (instructionText.textContent.includes('สำเร็จ')) {
+                                instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+                            }
+                        }, 3000);
+                    }, 2000);
+                }, 2000);
+            } else {
+                instructionText.textContent = '⚠️ อุปกรณ์นี้ไม่รองรับ AR';
+                instructionText.style.background = 'rgba(255,0,0,0.8)';
+            }
+        }
+
+        // รีเซ็ตกล้อง
+        function resetCamera() {
+            viewer.cameraOrbit = '0deg 75deg auto';
+            viewer.cameraTarget = 'auto auto auto';
+            instructionText.textContent = '🔄 รีเซ็ตตำแหน่งกล้องเรียบร้อย';
+            instructionText.style.background = 'rgba(0,230,118,0.8)';
+            setTimeout(() => {
+                instructionText.style.background = 'rgba(0,0,0,0.7)';
+                instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+            }, 2000);
+        }
+
+        // เริ่มต้นแอพพลิเคชัน
         startBtn.onclick = () => {
             splash.style.opacity = '0';
-            setTimeout(() => splash.style.display = 'none', 500);
-            audio.play();
+            setTimeout(() => {
+                splash.style.display = 'none';
+                // เล่นเสียง narration
+                audio.play().catch(e => console.log('Audio play failed:', e));
+                
+                // แสดงคำแนะนำ
+                instructionText.style.opacity = '1';
+            }, 500);
         };
 
+        // ปุ่มเปิด AR แบบกำหนดเอง
+        customArBtn.onclick = (e) => {
+            e.preventDefault();
+            startAR();
+        };
+
+        // ปุ่มรีเซ็ต
+        resetBtn.onclick = (e) => {
+            e.preventDefault();
+            resetCamera();
+        };
+
+        // ตรวจจับสถานะ AR
         viewer.addEventListener('ar-status', (event) => {
+            console.log('AR Status:', event.detail.status);
+            
             if (event.detail.status === 'session-started') {
+                // เล่นเสียงเมื่อเริ่ม AR session
                 audio.currentTime = 0;
-                audio.play();
+                audio.play().catch(e => console.log('Audio play failed:', e));
+                
+                instructionText.textContent = '🎯 โหมด AR เริ่มทำงานแล้ว | แตะค้างเพื่อเคลื่อนย้ายวัตถุ';
+                instructionText.style.background = 'rgba(0,230,118,0.9)';
+                
+                setTimeout(() => {
+                    instructionText.style.background = 'rgba(0,0,0,0.7)';
+                    instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+                }, 3000);
+            }
+            
+            if (event.detail.status === 'failed') {
+                instructionText.textContent = '⚠️ ไม่พบพื้น กรุณาขยับกล้องช้าๆ';
+                instructionText.style.background = 'rgba(255,0,0,0.8)';
+                setTimeout(() => {
+                    instructionText.style.background = 'rgba(0,0,0,0.7)';
+                    instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+                }, 3000);
             }
         });
+
+        // โหลดโมเดลเสร็จ
+        viewer.addEventListener('load', () => {
+            console.log('Model loaded successfully');
+            instructionText.textContent = '✅ โหลดโมเดลสำเร็จ | พร้อมใช้งาน';
+            setTimeout(() => {
+                instructionText.textContent = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย';
+            }, 2000);
+        });
+
+        // รองรับการเคลื่อนย้ายวัตถุด้วย drag (ในโหมด non-AR)
+        let isDragging = false;
+        let lastX = 0;
+        
+        viewer.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+        });
+        
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        viewer.addEventListener('mousemove', (e) => {
+            if (isDragging && !viewer.canActivateAR) {
+                const deltaX = e.clientX - lastX;
+                const currentOrbit = viewer.cameraOrbit;
+                const orbitMatch = currentOrbit.match(/([-\d.]+)deg\s+([-\d.]+)deg/);
+                if (orbitMatch) {
+                    const newYaw = parseFloat(orbitMatch[1]) + deltaX * 0.5;
+                    viewer.cameraOrbit = `${newYaw}deg ${orbitMatch[2]}deg auto`;
+                }
+                lastX = e.clientX;
+            }
+        });
+
+        // แสดงคำแนะนำเพิ่มเติมสำหรับมือถือ
+        if ('ontouchstart' in window) {
+            instructionText.innerHTML = '💡 แตะค้างบนวัตถุเพื่อเคลื่อนย้าย | ใช้นิ้วถนัด 2 นิ้วเพื่อหมุน/ซูม';
+        }
     </script>
 </body>
 </html>
